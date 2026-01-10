@@ -89,11 +89,19 @@ const Budgets = () => {
       .reduce((sum, t) => sum + t.amount, 0);
   };
 
-  const chartData = budgets.map((budget) => ({
-    name: budget.category,
-    value: budget.monthly_limit,
-    spent: getSpentByCategory(budget.category),
-  }));
+  const chartData = budgets.map((budget) => {
+    const spent = getSpentByCategory(budget.category);
+    return {
+      name: budget.category,
+      budget: budget.monthly_limit,
+      spent: spent,
+      remaining: Math.max(0, budget.monthly_limit - spent),
+      overBudget: Math.max(0, spent - budget.monthly_limit),
+    };
+  });
+
+  const totalBudget = budgets.reduce((sum, budget) => sum + budget.monthly_limit, 0);
+  const totalSpent = budgets.reduce((sum, budget) => sum + getSpentByCategory(budget.category), 0);
 
   const handleAddOrUpdateBudget = async () => {
     if (!selectedCategory || !budgetAmount) {
@@ -156,8 +164,60 @@ const Budgets = () => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Budgets</h1>
-        <p className="text-muted-foreground">Plan and track your family's monthly budgets</p>
+        <p className="text-muted-foreground">Plan and track your family's monthly budgets by category</p>
       </div>
+
+      {/* Budget Summary Cards */}
+      {budgets.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Total Budget</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">
+                ₹{totalBudget.toLocaleString("en-IN")}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${totalSpent > totalBudget ? 'text-red-600' : 'text-green-600'}`}>
+                ₹{totalSpent.toLocaleString("en-IN")}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Remaining</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${totalBudget - totalSpent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                ₹{(totalBudget - totalSpent).toLocaleString("en-IN")}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Budget Utilization</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${totalBudget > 0 && totalSpent / totalBudget > 1 ? 'text-red-600' : 'text-blue-600'}`}>
+                {totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : 0}%
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                of monthly budget used
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card>
         <CardContent className="pt-6">
@@ -207,35 +267,106 @@ const Budgets = () => {
       </Card>
 
       {chartData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Budget Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Tooltip formatter={(value) => `₹${value.toLocaleString("en-IN")}`} />
-                <Legend />
-                <Pie
-                  data={chartData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label
-                >
-                  {chartData.map((_, index) => (
-                    <Cell
-                      key={`cell-${index}`}
-                      fill={["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"][index % 5]}
-                    />
-                  ))}
-                </Pie>
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Budget vs Spending Pie Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Budget Allocation</CardTitle>
+              <CardDescription>Planned budget distribution</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Tooltip formatter={(value) => `₹${value.toLocaleString("en-IN")}`} />
+                  <Legend />
+                  <Pie
+                    data={chartData}
+                    dataKey="budget"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {chartData.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#84cc16", "#f97316"][index % 8]}
+                      />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+
+          {/* Spending vs Budget Comparison */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Spending Overview</CardTitle>
+              <CardDescription>Actual spending vs budget</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                  <span className="font-medium">Total Budget</span>
+                  <span className="font-semibold text-blue-600">₹{totalBudget.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                  <span className="font-medium">Total Spent</span>
+                  <span className={`font-semibold ${totalSpent > totalBudget ? 'text-red-600' : 'text-green-600'}`}>
+                    ₹{totalSpent.toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                  <span className="font-medium">Remaining</span>
+                  <span className={`font-semibold ${totalBudget - totalSpent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ₹{(totalBudget - totalSpent).toLocaleString("en-IN")}
+                  </span>
+                </div>
+
+                {/* Budget Status Summary */}
+                <div className="pt-2 border-t">
+                  <h4 className="font-medium mb-2">Budget Status</h4>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 bg-green-50 rounded">
+                      <div className="text-lg font-semibold text-green-600">
+                        {budgets.filter(b => getSpentByCategory(b.category) < b.monthly_limit * 0.8).length}
+                      </div>
+                      <div className="text-xs text-green-700">Under Budget</div>
+                    </div>
+                    <div className="p-2 bg-yellow-50 rounded">
+                      <div className="text-lg font-semibold text-yellow-600">
+                        {budgets.filter(b => {
+                          const spent = getSpentByCategory(b.category);
+                          return spent >= b.monthly_limit * 0.8 && spent <= b.monthly_limit;
+                        }).length}
+                      </div>
+                      <div className="text-xs text-yellow-700">On Track</div>
+                    </div>
+                    <div className="p-2 bg-red-50 rounded">
+                      <div className="text-lg font-semibold text-red-600">
+                        {budgets.filter(b => getSpentByCategory(b.category) > b.monthly_limit).length}
+                      </div>
+                      <div className="text-xs text-red-700">Over Budget</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <div className="flex justify-between text-sm text-muted-foreground mb-1">
+                    <span>Overall Progress</span>
+                    <span>{totalBudget > 0 ? ((totalSpent / totalBudget) * 100).toFixed(1) : 0}%</span>
+                  </div>
+                  <Progress
+                    value={totalBudget > 0 ? Math.min((totalSpent / totalBudget) * 100, 100) : 0}
+                    className="h-3"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <Card>
@@ -255,35 +386,85 @@ const Budgets = () => {
             <div className="space-y-6">
               {budgets.map((budget) => {
                 const spent = getSpentByCategory(budget.category);
-                const percentage = Math.min((spent / budget.monthly_limit) * 100, 100);
+                const percentage = budget.monthly_limit > 0 ? (spent / budget.monthly_limit) * 100 : 0;
+                const remaining = Math.max(0, budget.monthly_limit - spent);
+                const overBudget = Math.max(0, spent - budget.monthly_limit);
                 const isOverBudget = spent > budget.monthly_limit;
+                const isUnderBudget = spent < budget.monthly_limit * 0.8; // Less than 80% used
 
                 return (
-                  <div key={budget.id} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">{budget.category}</p>
-                        <p className="text-sm text-muted-foreground">
-                          ₹{spent.toLocaleString("en-IN")} / ₹
-                          {budget.monthly_limit.toLocaleString("en-IN")}
-                        </p>
+                  <Card key={budget.id} className={`border-l-4 ${isOverBudget ? 'border-l-red-500' : isUnderBudget ? 'border-l-green-500' : 'border-l-yellow-500'}`}>
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{budget.category}</h3>
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-sm text-muted-foreground">
+                              Spent: ₹{spent.toLocaleString("en-IN")}
+                            </span>
+                            <span className="text-sm text-muted-foreground">
+                              Budget: ₹{budget.monthly_limit.toLocaleString("en-IN")}
+                            </span>
+                            <span className={`text-sm font-medium ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {remaining >= 0 ? 'Remaining' : 'Over'}: ₹{Math.abs(remaining).toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteBudget(budget.id)}
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteBudget(budget.id)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <Progress value={percentage} className="h-2" />
-                    {isOverBudget && (
-                      <p className="text-xs text-red-600">
-                        Over budget by ₹{(spent - budget.monthly_limit).toLocaleString("en-IN")}
-                      </p>
-                    )}
-                  </div>
+
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Progress</span>
+                          <span className={`font-medium ${isOverBudget ? 'text-red-600' : isUnderBudget ? 'text-green-600' : 'text-yellow-600'}`}>
+                            {percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.min(percentage, 100)}
+                          className={`h-3 ${isOverBudget ? '[&>div]:bg-red-500' : isUnderBudget ? '[&>div]:bg-green-500' : '[&>div]:bg-yellow-500'}`}
+                        />
+                        {percentage > 100 && (
+                          <Progress
+                            value={((percentage - 100) / 100) * 100}
+                            className="h-1 [&>div]:bg-red-500 mt-1"
+                          />
+                        )}
+                      </div>
+
+                      <div className="mt-3 p-3 rounded-lg bg-muted/30">
+                        {isOverBudget ? (
+                          <div className="flex items-center gap-2 text-red-600">
+                            <span className="text-sm font-medium">⚠️ Over Budget</span>
+                            <span className="text-sm">
+                              You've exceeded your budget by ₹{overBudget.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                        ) : isUnderBudget ? (
+                          <div className="flex items-center gap-2 text-green-600">
+                            <span className="text-sm font-medium">✅ Under Budget</span>
+                            <span className="text-sm">
+                              Great job! You have ₹{remaining.toLocaleString("en-IN")} remaining
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 text-yellow-600">
+                            <span className="text-sm font-medium">⚡ On Track</span>
+                            <span className="text-sm">
+                              You're using your budget appropriately with ₹{remaining.toLocaleString("en-IN")} left
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 );
               })}
             </div>

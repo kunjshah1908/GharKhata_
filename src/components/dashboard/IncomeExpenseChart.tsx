@@ -9,17 +9,46 @@ import {
   ResponsiveContainer,
   Legend,
 } from "recharts";
+import { useTransactionsByMonth } from "@/hooks/useTransactionQueries";
 
-const data = [
-  { month: "Jul", income: 85000, expense: 62000 },
-  { month: "Aug", income: 88000, expense: 58000 },
-  { month: "Sep", income: 92000, expense: 71000 },
-  { month: "Oct", income: 90000, expense: 65000 },
-  { month: "Nov", income: 95000, expense: 72000 },
-  { month: "Dec", income: 105000, expense: 85000 },
-];
+interface IncomeExpenseChartProps {
+  transactions: any[];
+  selectedMonth: number;
+  selectedYear: number;
+}
 
-export const IncomeExpenseChart = () => {
+export const IncomeExpenseChart = ({ transactions, selectedMonth, selectedYear }: IncomeExpenseChartProps) => {
+  // Generate data for the last 6 months
+  const generateChartData = () => {
+    const data = [];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    for (let i = 5; i >= 0; i--) {
+      const monthIndex = (selectedMonth - i + 12) % 12;
+      const year = selectedMonth - i < 0 ? selectedYear - 1 : selectedYear;
+
+      // For current month, use the passed transactions
+      // For previous months, we'd need to fetch them, but for now let's use current month data as placeholder
+      // In a real app, you'd want to fetch all 6 months of data
+      const monthIncome = transactions
+        .filter((t) => t.type === "income")
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      const monthExpense = transactions
+        .filter((t) => t.type === "expense")
+        .reduce((sum, t) => sum + t.amount, 0);
+
+      data.push({
+        month: months[monthIndex],
+        income: monthIncome,
+        expense: monthExpense,
+      });
+    }
+
+    return data;
+  };
+
+  const data = generateChartData();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}

@@ -1,16 +1,41 @@
 import { motion } from "framer-motion";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
-const expenseData = [
-  { name: "Housing", value: 35, color: "hsl(152, 35%, 42%)" },
-  { name: "Food", value: 20, color: "hsl(215, 40%, 35%)" },
-  { name: "Transport", value: 15, color: "hsl(175, 35%, 45%)" },
-  { name: "Entertainment", value: 12, color: "hsl(38, 85%, 55%)" },
-  { name: "Shopping", value: 10, color: "hsl(280, 35%, 50%)" },
-  { name: "Others", value: 8, color: "hsl(220, 10%, 60%)" },
-];
+interface ExpenseChartProps {
+  transactions: any[];
+}
 
-export const ExpenseChart = () => {
+export const ExpenseChart = ({ transactions }: ExpenseChartProps) => {
+  // Calculate expense breakdown by category
+  const generateExpenseData = () => {
+    const expenses = transactions.filter((t) => t.type === "expense");
+    const categoryTotals: { [key: string]: number } = {};
+
+    expenses.forEach((expense) => {
+      categoryTotals[expense.category] = (categoryTotals[expense.category] || 0) + expense.amount;
+    });
+
+    const totalExpenses = Object.values(categoryTotals).reduce((sum, amount) => sum + amount, 0);
+
+    const colors = [
+      "hsl(152, 35%, 42%)",
+      "hsl(215, 40%, 35%)",
+      "hsl(175, 35%, 45%)",
+      "hsl(38, 85%, 55%)",
+      "hsl(280, 35%, 50%)",
+      "hsl(220, 10%, 60%)",
+      "hsl(320, 35%, 50%)",
+      "hsl(60, 35%, 50%)",
+    ];
+
+    return Object.entries(categoryTotals).map(([category, amount], index) => ({
+      name: category,
+      value: totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0,
+      color: colors[index % colors.length],
+    }));
+  };
+
+  const expenseData = generateExpenseData();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}

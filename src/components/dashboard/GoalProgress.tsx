@@ -1,43 +1,26 @@
 import { motion } from "framer-motion";
-import { Target, Plane, GraduationCap, Car } from "lucide-react";
+import { Target, Plane, GraduationCap, Car, Home, PiggyBank } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
-const goals = [
-  {
-    id: 1,
-    title: "Emergency Fund",
-    target: 500000,
-    current: 320000,
-    icon: Target,
-    color: "bg-primary",
-  },
-  {
-    id: 2,
-    title: "Family Vacation",
-    target: 150000,
-    current: 95000,
-    icon: Plane,
-    color: "bg-accent",
-  },
-  {
-    id: 3,
-    title: "Kids Education",
-    target: 1000000,
-    current: 450000,
-    icon: GraduationCap,
-    color: "bg-secondary",
-  },
-  {
-    id: 4,
-    title: "New Car",
-    target: 800000,
-    current: 280000,
-    icon: Car,
-    color: "bg-warning",
-  },
-];
+interface GoalProgressProps {
+  goals: any[];
+}
 
-export const GoalProgress = () => {
+export const GoalProgress = ({ goals }: GoalProgressProps) => {
+  const getIcon = (title: string) => {
+    const lowerTitle = title.toLowerCase();
+    if (lowerTitle.includes('vacation') || lowerTitle.includes('trip')) return Plane;
+    if (lowerTitle.includes('education') || lowerTitle.includes('school')) return GraduationCap;
+    if (lowerTitle.includes('car')) return Car;
+    if (lowerTitle.includes('house') || lowerTitle.includes('home')) return Home;
+    if (lowerTitle.includes('emergency') || lowerTitle.includes('fund')) return PiggyBank;
+    return Target;
+  };
+
+  const getColor = (index: number) => {
+    const colors = ["bg-primary", "bg-accent", "bg-secondary", "bg-warning"];
+    return colors[index % colors.length];
+  };
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -47,12 +30,13 @@ export const GoalProgress = () => {
     >
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-foreground">Goal Progress</h3>
-        <span className="text-sm text-muted-foreground">4 active goals</span>
+        <span className="text-sm text-muted-foreground">{goals.length} active goals</span>
       </div>
 
       <div className="space-y-4">
-        {goals.map((goal, index) => {
-          const percentage = Math.round((goal.current / goal.target) * 100);
+        {goals.length > 0 ? goals.map((goal, index) => {
+          const percentage = Math.round((goal.current_amount / goal.target_amount) * 100);
+          const IconComponent = getIcon(goal.name);
           return (
             <motion.div
               key={goal.id}
@@ -63,9 +47,9 @@ export const GoalProgress = () => {
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <goal.icon className="w-4 h-4 text-muted-foreground" />
+                  <IconComponent className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-medium text-foreground">
-                    {goal.title}
+                    {goal.name}
                   </span>
                 </div>
                 <span className="text-sm text-muted-foreground tabular-nums">
@@ -75,15 +59,20 @@ export const GoalProgress = () => {
               <Progress value={percentage} className="h-2" />
               <div className="flex items-center justify-between mt-1">
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  ₹{(goal.current / 1000).toFixed(0)}k
+                  ₹{(goal.current_amount / 1000).toFixed(0)}k
                 </span>
                 <span className="text-xs text-muted-foreground tabular-nums">
-                  ₹{(goal.target / 1000).toFixed(0)}k
+                  ₹{(goal.target_amount / 1000).toFixed(0)}k
                 </span>
               </div>
             </motion.div>
           );
-        })}
+        }) : (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground">No goals set yet</p>
+            <p className="text-sm text-muted-foreground">Create your first goal to start tracking progress</p>
+          </div>
+        )}
       </div>
     </motion.div>
   );

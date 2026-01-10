@@ -34,6 +34,7 @@ const Transactions = () => {
   const { currentFamily } = useFamily();
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
   const { data: transactions = [], isLoading } = useTransactionsByMonth(
     currentFamily?.id || null,
@@ -105,6 +106,7 @@ const Transactions = () => {
     setAmount("");
     setCategory("");
     setDescription("");
+    setSelectedDate(new Date().toISOString().split("T")[0]);
     setIsRecurring(false);
     setRecurringFrequency("monthly");
     setIsDialogOpen(true);
@@ -126,7 +128,7 @@ const Transactions = () => {
         category,
         amount: parseFloat(amount),
         description: description || undefined,
-        date: new Date(selectedYear, selectedMonth, 1).toISOString().split("T")[0],
+        date: selectedDate,
         is_recurring: isRecurring,
         recurring_frequency: isRecurring ? recurringFrequency : undefined,
       });
@@ -140,6 +142,7 @@ const Transactions = () => {
       setAmount("");
       setCategory("");
       setDescription("");
+      setSelectedDate(new Date().toISOString().split("T")[0]);
     } catch (error) {
       toast({
         title: "Error",
@@ -414,6 +417,18 @@ const Transactions = () => {
                 placeholder="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date" className="text-sm font-medium">
+                Date
+              </Label>
+              <Input
+                id="date"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
               />
             </div>
 
