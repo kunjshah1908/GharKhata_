@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import { AppSidebar } from "@/components/dashboard/AppSidebar";
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import Chatbot from "@/components/Chatbot";
 
 export const DashboardLayout = () => {
   return (
@@ -12,6 +13,7 @@ export const DashboardLayout = () => {
           <Outlet />
         </main>
       </div>
+      <Chatbot />
     </div>
   );
 };
