@@ -29,6 +29,7 @@ interface FamilyContextType {
   error: string | null;
   setCurrentFamily: (family: Family) => void;
   createFamily: (name: string, currency: string, monthStartDay: number) => Promise<Family>;
+  deleteFamily: (familyId: string) => Promise<void>;
   fetchFamilies: () => Promise<void>;
 }
 
@@ -225,6 +226,54 @@ export const FamilyProvider = ({ children }: { children: React.ReactNode }) => {
     localStorage.setItem("currentFamilyId", family.id);
   };
 
+  const deleteFamily = async (familyId: string): Promise<void> => {
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
+    try {
+      // Check if user is financial manager
+      const { data: member, error: memberError } = await supabase
+        .from("family_members")
+        .select("role")
+        .eq("family_id", familyId)
+        .eq("user_id", user.id)
+        .single();
+
+      if (memberError || !member || member.role !== "financial_manager") {
+        throw new Error("Only financial managers can delete families");
+      }
+
+      // Delete the family (cascade will delete related records)
+      const { error: deleteError } = await supabase
+        .from("families")
+        .delete()
+        .eq("id", familyId);
+
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // If deleted family was current, switch to another family or null
+      if (currentFamily?.id === familyId) {
+        const remainingFamilies = families.filter(f => f.id !== familyId);
+        if (remainingFamilies.length > 0) {
+          handleSetCurrentFamily(remainingFamilies[0]);
+        } else {
+          setCurrentFamily(null);
+          localStorage.removeItem("currentFamilyId");
+        }
+      }
+
+      // Refresh families list
+      await fetchFamilies();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete family";
+      setError(message);
+      throw err;
+    }
+  };
+
   // Fetch families when user changes
   useEffect(() => {
     if (user) {
@@ -242,6 +291,7 @@ export const FamilyProvider = ({ children }: { children: React.ReactNode }) => {
         error,
         setCurrentFamily: handleSetCurrentFamily,
         createFamily,
+        deleteFamily,
         fetchFamilies,
       }}
     >

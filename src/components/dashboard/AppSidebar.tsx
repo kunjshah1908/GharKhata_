@@ -17,11 +17,31 @@ import {
   ChevronRight,
   Wallet,
   LogOut,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFamily } from "@/contexts/FamilyContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 
 const mainNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -42,11 +62,78 @@ export const AppSidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
   const { user, signOut } = useAuth();
-  const { currentFamily, families, setCurrentFamily } = useFamily();
+  const { currentFamily, families, setCurrentFamily, createFamily, deleteFamily } = useFamily();
+  const { toast } = useToast();
+  
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newFamilyName, setNewFamilyName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [familyToDelete, setFamilyToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleLogout = async () => {
     await signOut();
     // Will auto-redirect to login
+  };
+
+  const handleCreateFamily = async () => {
+    if (!newFamilyName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a family name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const family = await createFamily(newFamilyName, "INR", 1);
+      toast({
+        title: "Success",
+        description: `Family "${newFamilyName}" created successfully!`,
+      });
+      setIsCreateDialogOpen(false);
+      setNewFamilyName("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create family",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleDeleteFamily = async () => {
+    if (!familyToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteFamily(familyToDelete.id);
+      toast({
+        title: "Success",
+        description: `Family "${familyToDelete.name}" deleted successfully!`,
+      });
+      setIsDeleteDialogOpen(false);
+      setFamilyToDelete(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete family",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const openDeleteDialog = (family: { id: string; name: string }) => {
+    setFamilyToDelete(family);
+    setIsDeleteDialogOpen(true);
   };
 
   const isActive = (href: string) => {
@@ -138,15 +225,40 @@ export const AppSidebar = () => {
           <div className="px-3 py-2 border-t border-sidebar-border space-y-2">
             <p className="text-xs text-muted-foreground">Switch Family</p>
             {families.map((fam) => (
-              <Button
-                key={fam.id}
-                variant={fam.id === currentFamily?.id ? "default" : "ghost"}
-                className="w-full justify-start text-xs"
-                onClick={() => setCurrentFamily(fam)}
-              >
-                {fam.name}
-              </Button>
+              <ContextMenu key={fam.id}>
+                <ContextMenuTrigger>
+                  <Button
+                    variant={fam.id === currentFamily?.id ? "default" : "ghost"}
+                    className="w-full justify-start text-xs"
+                    onClick={() => setCurrentFamily(fam)}
+                  >
+                    {fam.name}
+                  </Button>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onClick={() => openDeleteDialog({ id: fam.id, name: fam.name })}
+                  >
+                    Delete Family
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             ))}
+          </div>
+        )}
+        
+        {/* Create New Family Button */}
+        {!isCollapsed && (
+          <div className="px-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start gap-2 text-xs"
+              onClick={() => setIsCreateDialogOpen(true)}
+            >
+              <Plus className="w-4 h-4" />
+              Create New Family
+            </Button>
           </div>
         )}
 
@@ -165,6 +277,60 @@ export const AppSidebar = () => {
           </Button>
         </div>
       </div>
+      
+      {/* Create Family Dialog */}
+      <AlertDialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create New Family</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a name for your new family household
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label htmlFor="familyName">Family Name</Label>
+            <Input
+              id="familyName"
+              placeholder="e.g., Sharma Household"
+              value={newFamilyName}
+              onChange={(e) => setNewFamilyName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isCreating) {
+                  handleCreateFamily();
+                }
+              }}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCreateFamily} disabled={isCreating}>
+              {isCreating ? "Creating..." : "Create Family"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Family Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Family</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{familyToDelete?.name}</strong>? This will permanently delete all transactions, budgets, goals, and other data associated with this family. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteFamily} 
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting ? "Deleting..." : "Delete Family"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.aside>
   );
 };

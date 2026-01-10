@@ -21,20 +21,6 @@ export const DashboardHeader = () => {
   return (
     <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
       <div className="flex items-center gap-6">
-        {/* Family Selector */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="gap-2 text-foreground font-medium">
-              Sharma Household
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem>Sharma Household</DropdownMenuItem>
-            <DropdownMenuItem>+ Create New Family</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
         {/* Month Selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
