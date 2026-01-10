@@ -37,8 +37,8 @@ export const HeroSection = () => {
         }} transition={{
           duration: 0.5,
           delay: 0.05
-        }} className="flex justify-center mb-6">
-            <img src="/logo.png" alt="GharKhata" className="w-24 h-24 md:w-32 md:h-32" />
+        }} className="flex justify-center mb-1">
+            <img src="/logo.png" alt="GharKhata" className="w-48 h-48 md:w-64 md:h-64" />
           </motion.div>
           
           <motion.h1 initial={{
