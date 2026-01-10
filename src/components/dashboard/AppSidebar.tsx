@@ -23,9 +23,7 @@ import { Button } from "@/components/ui/button";
 const mainNavItems = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendar", href: "/dashboard/calendar", icon: Calendar },
-  { title: "Cash Flow", href: "/dashboard/cashflow", icon: ArrowDownUp },
-  { title: "Inflows", href: "/dashboard/inflows", icon: TrendingUp },
-  { title: "Outflows", href: "/dashboard/outflows", icon: TrendingDown },
+  { title: "Transactions", href: "/dashboard/transactions", icon: ArrowDownUp },
   { title: "Assets & Liabilities", href: "/dashboard/assets", icon: Landmark },
   { title: "Budgets", href: "/dashboard/budgets", icon: PieChart },
   { title: "Goals", href: "/dashboard/goals", icon: Target },

@@ -7,6 +7,8 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import CalendarView from "./pages/CalendarView";
 import AssetsLiabilities from "./pages/AssetsLiabilities";
+import Budgets from "./pages/Budgets";
+import Transactions from "./pages/Transactions";
 import { DashboardLayout } from "./layouts/DashboardLayout";
 import NotFound from "./pages/NotFound";
 
@@ -24,6 +26,8 @@ const App = () => {
             <Route path="/dashboard" element={<DashboardLayout />}>
               <Route index element={<Dashboard />} />
               <Route path="calendar" element={<CalendarView />} />
+              <Route path="budgets" element={<Budgets />} />
+              <Route path="transactions" element={<Transactions />} />
               <Route path="assets" element={<AssetsLiabilities />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
