@@ -28,6 +28,19 @@ export const HeroSection = () => {
             </span>
           </motion.div>
           
+          <motion.div initial={{
+          opacity: 0,
+          scale: 0.9
+        }} animate={{
+          opacity: 1,
+          scale: 1
+        }} transition={{
+          duration: 0.5,
+          delay: 0.05
+        }} className="flex justify-center mb-6">
+            <img src="/logo.png" alt="GharKhata" className="w-24 h-24 md:w-32 md:h-32" />
+          </motion.div>
+          
           <motion.h1 initial={{
           opacity: 0,
           y: 20
@@ -38,7 +51,7 @@ export const HeroSection = () => {
           duration: 0.6,
           delay: 0.1
         }} className="text-4xl md:text-5xl lg:text-6xl font-semibold text-foreground leading-tight mb-6">
-            One place to manage your{" "}
+            <span className="text-primary">GharKhata</span> - One place to manage your{" "}
             <span className="text-primary">family's money</span>, calmly.
           </motion.h1>
           

@@ -2,30 +2,28 @@ import { useState } from "react";
 import CalendarComponent from "@/components/CalendarComponent";
 import ExpenseList from "@/components/ExpenseList";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-interface Expense {
-  description: string;
-  amount: number;
-  user: string;
-}
+import { useFamily } from "@/contexts/FamilyContext";
+import { useTransactions } from "@/hooks/useTransactionQueries";
 
 const CalendarView = () => {
+  const { currentFamily } = useFamily();
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const { data: allTransactions = [] } = useTransactions(currentFamily?.id || null);
 
   const handleDateChange = (date: Date) => {
     setSelectedDate(date);
-    
-    // Mock data - In a real app, this would fetch from your backend/database
-    const mockExpenses: Expense[] = [
-      { description: "Groceries", amount: 2500, user: "Rajesh" },
-      { description: "Utilities - Electricity", amount: 1800, user: "Priya" },
-      { description: "Mobile Recharge", amount: 499, user: "Aarav" },
-      { description: "Gas Cylinder", amount: 900, user: "Priya" },
-      { description: "Restaurant Dinner", amount: 1200, user: "Family" },
-    ];
-    
-    setExpenses(mockExpenses);
+  };
+
+  // Filter transactions for selected date
+  const getTransactionsForDate = (date: Date) => {
+    return allTransactions.filter((t) => {
+      const txnDate = new Date(t.date);
+      return (
+        txnDate.getDate() === date.getDate() &&
+        txnDate.getMonth() === date.getMonth() &&
+        txnDate.getFullYear() === date.getFullYear()
+      );
+    });
   };
 
   const formatDate = (date: Date) => {
@@ -36,6 +34,14 @@ const CalendarView = () => {
       day: 'numeric' 
     });
   };
+
+  if (!currentFamily) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Please select or create a family first</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -53,7 +59,7 @@ const CalendarView = () => {
           <CardHeader>
             <CardTitle>Select Date</CardTitle>
             <CardDescription>
-              Choose a date to view expenses
+              Choose a date to view transactions
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
@@ -61,16 +67,32 @@ const CalendarView = () => {
           </CardContent>
         </Card>
 
-        {/* Expense List Card */}
+        {/* Transactions Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Expenses</CardTitle>
+            <CardTitle>Transactions</CardTitle>
             <CardDescription>
               {formatDate(selectedDate)}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ExpenseList expenses={expenses} />
+            {getTransactionsForDate(selectedDate).length > 0 ? (
+              <div className="space-y-3">
+                {getTransactionsForDate(selectedDate).map((txn) => (
+                  <div key={txn.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div>
+                      <p className="font-medium">{txn.category}</p>
+                      <p className="text-xs text-muted-foreground">{txn.type}</p>
+                    </div>
+                    <p className={`font-semibold ${txn.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                      {txn.type === 'income' ? '+' : '-'}₹{txn.amount.toLocaleString('en-IN')}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">No transactions for this date</p>
+            )}
           </CardContent>
         </Card>
       </div>

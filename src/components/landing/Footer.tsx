@@ -13,10 +13,8 @@ export const Footer = () => {
       <div className="container px-4">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-foreground">FamilyFinance</span>
+            <img src="/logo.png" alt="GharKhata" className="w-9 h-9 rounded-lg" />
+            <span className="font-semibold text-foreground">GharKhata</span>
           </div>
           
           <nav className="flex items-center gap-6">
@@ -32,7 +30,7 @@ export const Footer = () => {
           </nav>
           
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} FamilyFinance. All rights reserved.
+            © {new Date().getFullYear()} GharKhata. All rights reserved.
           </p>
         </div>
       </div>

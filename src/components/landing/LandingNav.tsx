@@ -8,10 +8,8 @@ export const LandingNav = () => {
       <div className="container px-4">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
-              <Wallet className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-lg text-foreground">FamilyFinance</span>
+            <img src="/logo.png" alt="GharKhata" className="w-9 h-9 rounded-lg" />
+            <span className="font-semibold text-lg text-foreground">GharKhata</span>
           </Link>
           
           <nav className="hidden md:flex items-center gap-8">

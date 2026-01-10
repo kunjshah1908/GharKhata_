@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, TrendingUp, TrendingDown, Trash2 } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Trash2, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,153 +20,105 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-interface Transaction {
-  id: string;
-  type: "buy" | "sell" | "add" | "pay";
-  category: string;
-  amount: number;
-  date: string;
-  section: "asset" | "liability";
-  notes?: string;
-}
+import { Label } from "@/components/ui/label";
+import { useFamily } from "@/contexts/FamilyContext";
+import { useGoals, useCreateGoal, useDeleteGoal, useUpdateGoal } from "@/hooks/useGoalQueries";
+import { toast } from "@/components/ui/use-toast";
 
 const AssetsLiabilities = () => {
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: "1",
-      type: "buy",
-      category: "Gold",
-      amount: 50000,
-      date: new Date(2026, 0, 5).toISOString(),
-      section: "asset",
-    },
-    {
-      id: "2",
-      type: "sell",
-      category: "Silver",
-      amount: 25000,
-      date: new Date(2026, 0, 7).toISOString(),
-      section: "asset",
-    },
-    {
-      id: "3",
-      type: "add",
-      category: "Loan",
-      amount: 100000,
-      date: new Date(2026, 0, 3).toISOString(),
-      section: "liability",
-    },
-  ]);
+  const { currentFamily } = useFamily();
+
+  const { data: goals = [], isLoading } = useGoals(currentFamily?.id || null);
+  const createMutation = useCreateGoal(currentFamily?.id || null);
+  const deleteMutation = useDeleteGoal(currentFamily?.id || null);
+  const updateMutation = useUpdateGoal(currentFamily?.id || null);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [dialogType, setDialogType] = useState<"buy" | "sell" | "add" | "pay">("buy");
-  const [dialogSection, setDialogSection] = useState<"asset" | "liability">("asset");
-  const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
-  const [notes, setNotes] = useState("");
+  const [dialogType, setDialogType] = useState<"asset" | "liability">("asset");
+  const [goalName, setGoalName] = useState("");
+  const [targetAmount, setTargetAmount] = useState("");
+  const [currentAmount, setCurrentAmount] = useState("");
 
-  const assetCategories = ["Gold", "Silver", "Real Estate"];
-  const liabilityCategories = ["Loan", "Taxes"];
+  // Separate assets and liabilities based on naming convention
+  const assets = goals.filter(
+    (g) => !["Loan", "Taxes", "Debt", "Liability"].some((type) => g.name.includes(type))
+  );
 
-  const openDialog = (type: "buy" | "sell" | "add" | "pay", section: "asset" | "liability") => {
+  const liabilities = goals.filter(
+    (g) => ["Loan", "Taxes", "Debt", "Liability"].some((type) => g.name.includes(type))
+  );
+
+  const openDialog = (type: "asset" | "liability") => {
     setDialogType(type);
-    setDialogSection(section);
-    setAmount("");
-    setCategory("");
-    setNotes("");
+    setGoalName("");
+    setTargetAmount("");
+    setCurrentAmount("0");
     setIsDialogOpen(true);
   };
 
-  const handleSubmit = () => {
-    if (!amount || !category) return;
+  const handleSubmit = async () => {
+    if (!goalName || !targetAmount) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      type: dialogType,
-      category,
-      amount: parseFloat(amount),
-      date: new Date().toISOString(),
-      section: dialogSection,
-      notes: notes.trim() || undefined,
-    };
+    try {
+      await createMutation.mutateAsync({
+        name: goalName,
+        target_amount: parseFloat(targetAmount),
+      });
 
-    setTransactions([newTransaction, ...transactions]);
-    setIsDialogOpen(false);
-    setAmount("");
-    setCategory("");
-    setNotes("");
-  };
+      toast({
+        title: "Success",
+        description: "Goal created successfully",
+      });
 
-  const deleteTransaction = (id: string) => {
-    setTransactions(transactions.filter((t) => t.id !== id));
-  };
-
-  // Calculate totals
-  const assetTransactions = transactions.filter((t) => t.section === "asset");
-  const liabilityTransactions = transactions.filter((t) => t.section === "liability");
-
-  const totalAssetsBought = assetTransactions
-    .filter((t) => t.type === "buy")
-    .reduce((sum, t) => sum + t.amount, 0);
-  
-  const totalAssetsSold = assetTransactions
-    .filter((t) => t.type === "sell")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalLiabilitiesAdded = liabilityTransactions
-    .filter((t) => t.type === "add")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const totalLiabilitiesPaid = liabilityTransactions
-    .filter((t) => t.type === "pay")
-    .reduce((sum, t) => sum + t.amount, 0);
-
-  const netAssets = totalAssetsBought - totalAssetsSold;
-  const netLiabilities = totalLiabilitiesAdded - totalLiabilitiesPaid;
-
-  // Calculate category-wise totals for assets
-  const getCategoryTotals = (cat: string) => {
-    const categoryTransactions = assetTransactions.filter((t) => t.category === cat);
-    const bought = categoryTransactions
-      .filter((t) => t.type === "buy")
-      .reduce((sum, t) => sum + t.amount, 0);
-    const sold = categoryTransactions
-      .filter((t) => t.type === "sell")
-      .reduce((sum, t) => sum + t.amount, 0);
-    return { bought, sold, net: bought - sold };
-  };
-
-  const goldTotals = getCategoryTotals("Gold");
-  const silverTotals = getCategoryTotals("Silver");
-  const realEstateTotals = getCategoryTotals("Real Estate");
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
-  const getTransactionLabel = (type: string) => {
-    switch (type) {
-      case "buy": return "Bought";
-      case "sell": return "Sold";
-      case "add": return "Added";
-      case "pay": return "Paid";
-      default: return type;
+      setIsDialogOpen(false);
+      setGoalName("");
+      setTargetAmount("");
+      setCurrentAmount("0");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create goal",
+        variant: "destructive",
+      });
     }
   };
 
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteMutation.mutateAsync(id);
+      toast({
+        title: "Success",
+        description: "Goal deleted successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to delete goal",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!currentFamily) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground">Please select or create a family first</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Assets & Liabilities</h1>
-        <p className="text-muted-foreground">
-          Track your family's assets and liabilities
-        </p>
+        <p className="text-muted-foreground">Track your family's assets and liabilities</p>
       </div>
 
       {/* Assets Section */}
@@ -177,203 +129,65 @@ const AssetsLiabilities = () => {
               <CardTitle>Assets</CardTitle>
               <CardDescription>Manage your family's assets</CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => openDialog("buy", "asset")}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Buy Asset
-              </Button>
-              <Button
-                onClick={() => openDialog("sell", "asset")}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Sell Asset
-              </Button>
-            </div>
+            <Button
+              onClick={() => openDialog("asset")}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Asset
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {/* Asset Transactions */}
-          <div className="space-y-3 mb-6">
-            {assetTransactions.length > 0 ? (
-              assetTransactions.map((transaction) => (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          ) : assets.length > 0 ? (
+            <div className="space-y-3">
+              {assets.map((goal) => (
                 <div
-                  key={transaction.id}
+                  key={goal.id}
                   className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      transaction.type === "buy" 
-                        ? "bg-green-100 text-green-600" 
-                        : "bg-red-100 text-red-600"
-                    }`}>
-                      {transaction.type === "buy" ? (
-                        <TrendingDown className="w-5 h-5" />
-                      ) : (
-                        <TrendingUp className="w-5 h-5" />
-                      )}
+                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-green-600" />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground">
-                          {getTransactionLabel(transaction.type)} {transaction.category}
-                        </p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          transaction.type === "buy"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {transaction.type === "buy" ? "Purchase" : "Sale"}
-                        </span>
-                      </div>
-                      {transaction.notes && (
-                        <p className="text-sm text-foreground mt-0.5">
-                          {transaction.notes}
-                        </p>
-                      )}
+                      <p className="font-medium">{goal.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(transaction.date)}
+                        ₹{goal.current_amount.toLocaleString("en-IN")} / ₹
+                        {goal.target_amount.toLocaleString("en-IN")}
                       </p>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-green-600 h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(
+                              (goal.current_amount / goal.target_amount) * 100,
+                              100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-lg font-semibold ${
-                        transaction.type === "buy" ? "text-green-600" : "text-red-600"
-                      }`}>
-                        {transaction.type === "buy" ? "-" : "+"}₹{transaction.amount.toLocaleString("en-IN")}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteTransaction(transaction.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(goal.id)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="w-4 h-4 text-muted-foreground" />
+                  </Button>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No asset transactions yet. Start by buying or selling an asset.
-              </div>
-            )}
-          </div>
-
-          {/* Asset Summary */}
-          <div className="space-y-6 pt-4 border-t border-border">
-            {/* Overall Totals */}
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">Overall Totals</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
-                  <p className="text-sm text-muted-foreground mb-1">Total Bought</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    ₹{totalAssetsBought.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/20">
-                  <p className="text-sm text-muted-foreground mb-1">Total Sold</p>
-                  <p className="text-2xl font-bold text-red-600">
-                    ₹{totalAssetsSold.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                  <p className="text-sm text-muted-foreground mb-1">Net Assets</p>
-                  <p className={`text-2xl font-bold ${netAssets >= 0 ? "text-blue-600" : "text-red-600"}`}>
-                    ₹{netAssets.toLocaleString("en-IN")}
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
-
-            {/* Gold Totals */}
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
-                Gold
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
-                  <p className="text-xs text-muted-foreground mb-1">Bought</p>
-                  <p className="text-xl font-semibold text-green-600">
-                    ₹{goldTotals.bought.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
-                  <p className="text-xs text-muted-foreground mb-1">Sold</p>
-                  <p className="text-xl font-semibold text-red-600">
-                    ₹{goldTotals.sold.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900">
-                  <p className="text-xs text-muted-foreground mb-1">Net</p>
-                  <p className={`text-xl font-semibold ${goldTotals.net >= 0 ? "text-yellow-600" : "text-red-600"}`}>
-                    ₹{goldTotals.net.toLocaleString("en-IN")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Silver Totals */}
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                Silver
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
-                  <p className="text-xs text-muted-foreground mb-1">Bought</p>
-                  <p className="text-xl font-semibold text-green-600">
-                    ₹{silverTotals.bought.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
-                  <p className="text-xs text-muted-foreground mb-1">Sold</p>
-                  <p className="text-xl font-semibold text-red-600">
-                    ₹{silverTotals.sold.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-950/20 border border-gray-200 dark:border-gray-900">
-                  <p className="text-xs text-muted-foreground mb-1">Net</p>
-                  <p className={`text-xl font-semibold ${silverTotals.net >= 0 ? "text-gray-600" : "text-red-600"}`}>
-                    ₹{silverTotals.net.toLocaleString("en-IN")}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Real Estate Totals */}
-            <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-purple-500"></span>
-                Real Estate
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
-                  <p className="text-xs text-muted-foreground mb-1">Bought</p>
-                  <p className="text-xl font-semibold text-green-600">
-                    ₹{realEstateTotals.bought.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
-                  <p className="text-xs text-muted-foreground mb-1">Sold</p>
-                  <p className="text-xl font-semibold text-red-600">
-                    ₹{realEstateTotals.sold.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-900">
-                  <p className="text-xs text-muted-foreground mb-1">Net</p>
-                  <p className={`text-xl font-semibold ${realEstateTotals.net >= 0 ? "text-purple-600" : "text-red-600"}`}>
-                    ₹{realEstateTotals.net.toLocaleString("en-IN")}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No assets yet</p>
+          )}
         </CardContent>
       </Card>
 
@@ -385,174 +199,105 @@ const AssetsLiabilities = () => {
               <CardTitle>Liabilities</CardTitle>
               <CardDescription>Track your family's liabilities</CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => openDialog("add", "liability")}
-                className="bg-red-600 hover:bg-red-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Liability
-              </Button>
-              <Button
-                onClick={() => openDialog("pay", "liability")}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Pay Liability
-              </Button>
-            </div>
+            <Button
+              onClick={() => openDialog("liability")}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Liability
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {/* Liability Transactions */}
-          <div className="space-y-3 mb-6">
-            {liabilityTransactions.length > 0 ? (
-              liabilityTransactions.map((transaction) => (
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <p className="text-muted-foreground">Loading...</p>
+            </div>
+          ) : liabilities.length > 0 ? (
+            <div className="space-y-3">
+              {liabilities.map((goal) => (
                 <div
-                  key={transaction.id}
+                  key={goal.id}
                   className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                      transaction.type === "add" 
-                        ? "bg-red-100 text-red-600" 
-                        : "bg-green-100 text-green-600"
-                    }`}>
-                      {transaction.type === "add" ? (
-                        <TrendingUp className="w-5 h-5" />
-                      ) : (
-                        <TrendingDown className="w-5 h-5" />
-                      )}
+                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                      <TrendingDown className="w-5 h-5 text-red-600" />
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground">
-                          {getTransactionLabel(transaction.type)} {transaction.category}
-                        </p>
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          transaction.type === "add"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-green-100 text-green-700"
-                        }`}>
-                          {transaction.type === "add" ? "New" : "Payment"}
-                                              {transaction.notes && (
-                                                <p className="text-sm text-foreground mt-0.5">
-                                                  {transaction.notes}
-                                                </p>
-                                              )}
-                        </span>
-                      </div>
+                      <p className="font-medium">{goal.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {formatDate(transaction.date)}
+                        Outstanding: ₹{(goal.target_amount - goal.current_amount).toLocaleString("en-IN")}
                       </p>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-orange-600 h-2 rounded-full"
+                          style={{
+                            width: `${Math.min(
+                              (goal.current_amount / goal.target_amount) * 100,
+                              100
+                            )}%`,
+                          }}
+                        ></div>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-lg font-semibold ${
-                        transaction.type === "add" ? "text-red-600" : "text-green-600"
-                      }`}>
-                        {transaction.type === "add" ? "+" : "-"}₹{transaction.amount.toLocaleString("en-IN")}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteTransaction(transaction.id)}
-                      className="text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(goal.id)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="w-4 h-4 text-muted-foreground" />
+                  </Button>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                No liability transactions yet. Start by adding a liability.
-              </div>
-            )}
-          </div>
-
-          {/* Liability Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border">
-            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/20">
-              <p className="text-sm text-muted-foreground mb-1">Total Added</p>
-              <p className="text-2xl font-bold text-red-600">
-                ₹{totalLiabilitiesAdded.toLocaleString("en-IN")}
-              </p>
+              ))}
             </div>
-            <div className="p-4 rounded-lg bg-green-50 dark:bg-green-950/20">
-              <p className="text-sm text-muted-foreground mb-1">Total Paid</p>
-              <p className="text-2xl font-bold text-green-600">
-                ₹{totalLiabilitiesPaid.toLocaleString("en-IN")}
-              </p>
-            </div>
-            <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20">
-              <p className="text-sm text-muted-foreground mb-1">Outstanding</p>
-              <p className={`text-2xl font-bold ${netLiabilities > 0 ? "text-orange-600" : "text-green-600"}`}>
-                ₹{netLiabilities.toLocaleString("en-IN")}
-              </p>
-            </div>
-          </div>
+          ) : (
+            <p className="text-center text-muted-foreground py-8">No liabilities yet</p>
+          )}
         </CardContent>
       </Card>
 
-      {/* Transaction Dialog */}
+      {/* Add Goal Dialog */}
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {dialogType === "buy" && "Buy Asset"}
-              {dialogType === "sell" && "Sell Asset"}
-              {dialogType === "add" && "Add Liability"}
-              {dialogType === "pay" && "Pay Liability"}
+              {dialogType === "asset" ? "Add Asset" : "Add Liability"}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Enter the transaction details below
-            </AlertDialogDescription>
+            <AlertDialogDescription>Enter the details below</AlertDialogDescription>
           </AlertDialogHeader>
-          
-          
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Amount (₹)</label>
+              <Label htmlFor="name">Name</Label>
               <Input
-                type="number"
-                placeholder="Enter amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                id="name"
+                placeholder={dialogType === "asset" ? "Gold, Real Estate..." : "Loan, Debt..."}
+                value={goalName}
+                onChange={(e) => setGoalName(e.target.value)}
               />
             </div>
-            
+
             <div className="space-y-2">
-              <label className="text-sm font-medium">Category</label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(dialogSection === "asset" ? assetCategories : liabilityCategories).map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            
-                        <div className="space-y-2">
-                          <label className="text-sm font-medium">Notes (Optional)</label>
-                          <Input
-                            type="text"
-                            placeholder="Add a note for this transaction"
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                          />
-                        </div>
+              <Label htmlFor="target">Total Amount (₹)</Label>
+              <Input
+                id="target"
+                type="number"
+                placeholder="100000"
+                value={targetAmount}
+                onChange={(e) => setTargetAmount(e.target.value)}
+              />
             </div>
           </div>
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSubmit}>
-              OK
+            <AlertDialogAction onClick={handleSubmit} disabled={createMutation.isPending}>
+              {createMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Create {dialogType === "asset" ? "Asset" : "Liability"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

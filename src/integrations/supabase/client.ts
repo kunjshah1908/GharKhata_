@@ -5,13 +5,23 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// Debug: Log the env variables
+console.log('🔍 Supabase Client Init:', {
+  url: SUPABASE_URL,
+  hasKey: !!SUPABASE_PUBLISHABLE_KEY,
+  keyPreview: SUPABASE_PUBLISHABLE_KEY?.substring(0, 20)
+});
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: window.localStorage,
+    storageKey: 'sb-btlzvrkjzvugdtrysppz-auth-token',
     persistSession: true,
     autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
   }
 });
