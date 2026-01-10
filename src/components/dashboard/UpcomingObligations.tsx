@@ -2,42 +2,54 @@ import { motion } from "framer-motion";
 import { CreditCard, Home, Repeat, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const obligations = [
-  {
-    id: 1,
-    title: "Home Loan EMI",
-    amount: "₹42,500",
-    dueDate: "5th Jan",
-    type: "emi",
-    icon: Home,
-  },
-  {
-    id: 2,
-    title: "Credit Card Payment",
-    amount: "₹18,200",
-    dueDate: "10th Jan",
-    type: "credit",
-    icon: CreditCard,
-  },
-  {
-    id: 3,
-    title: "Netflix Subscription",
-    amount: "₹649",
-    dueDate: "15th Jan",
-    type: "subscription",
-    icon: Repeat,
-  },
-  {
-    id: 4,
-    title: "Insurance Premium",
-    amount: "₹5,200",
-    dueDate: "20th Jan",
-    type: "insurance",
-    icon: CalendarDays,
-  },
-];
+interface UpcomingObligationsProps {
+  transactions: any[];
+}
 
-export const UpcomingObligations = () => {
+export const UpcomingObligations = ({ transactions }: UpcomingObligationsProps) => {
+  // Get upcoming recurring transactions for this month
+  const getUpcomingObligations = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const recurringTransactions = transactions.filter((t) =>
+      t.type === "expense" && t.is_recurring
+    );
+
+    // Sort by amount (highest first) and take top 4
+    return recurringTransactions
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 4)
+      .map((transaction, index) => {
+        const getIcon = () => {
+          const category = transaction.category.toLowerCase();
+          if (category.includes('loan') || category.includes('emi')) return Home;
+          if (category.includes('card') || category.includes('credit')) return CreditCard;
+          if (category.includes('subscription') || category.includes('netflix') || category.includes('amazon')) return Repeat;
+          return CalendarDays;
+        };
+
+        const getType = () => {
+          const category = transaction.category.toLowerCase();
+          if (category.includes('loan') || category.includes('emi')) return 'emi';
+          if (category.includes('card') || category.includes('credit')) return 'credit';
+          if (category.includes('subscription')) return 'subscription';
+          return 'insurance';
+        };
+
+        return {
+          id: transaction.id,
+          title: transaction.category,
+          amount: `₹${transaction.amount.toLocaleString('en-IN')}`,
+          dueDate: `Recurring ${transaction.recurring_frequency}`,
+          type: getType(),
+          icon: getIcon(),
+        };
+      });
+  };
+
+  const obligations = getUpcomingObligations();
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
