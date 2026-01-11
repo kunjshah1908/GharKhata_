@@ -58,8 +58,9 @@ const AssetsLiabilities = () => {
   }, [assetType]);
 
   // Separate assets and liabilities based on naming convention
+  // Assets are only Gold, Silver, and Real Estate entries
   const assets = goals.filter(
-    (g) => !["Loan", "Taxes", "Debt", "Liability"].some((type) => g.name.includes(type))
+    (g) => g.name.startsWith("Gold|") || g.name.startsWith("Silver|") || g.name.startsWith("Real Estate|")
   );
 
   const liabilities = goals.filter(

@@ -21,7 +21,7 @@ import { toast } from "@/components/ui/use-toast";
 
 const Goals = () => {
   const { currentFamily } = useFamily();
-  const { data: goals = [], isLoading } = useGoals(currentFamily?.id || null);
+  const { data: allGoals = [], isLoading } = useGoals(currentFamily?.id || null);
   const createMutation = useCreateGoal(currentFamily?.id || null);
   const deleteMutation = useDeleteGoal(currentFamily?.id || null);
   const contributeMutation = useAddGoalContribution();
@@ -33,6 +33,15 @@ const Goals = () => {
   const [goalName, setGoalName] = useState("");
   const [targetAmount, setTargetAmount] = useState("");
   const [contributionAmount, setContributionAmount] = useState("");
+
+  // Filter out assets and liabilities - only show actual financial goals
+  const goals = allGoals.filter((g) => {
+    const name = g.name;
+    // Exclude assets (Gold, Silver, Real Estate) and liabilities
+    const isAsset = name.startsWith("Gold|") || name.startsWith("Silver|") || name.startsWith("Real Estate|");
+    const isLiability = name.startsWith("Liability|") || ["Loan", "Taxes", "Debt"].some((type) => name.includes(type));
+    return !isAsset && !isLiability;
+  });
 
   const handleCreateGoal = async () => {
     if (!goalName || !targetAmount) {
